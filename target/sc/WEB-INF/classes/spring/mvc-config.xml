@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<beans xmlns="http://www.springframework.org/schema/beans" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:mvc="http://www.springframework.org/schema/mvc" xmlns:context="http://www.springframework.org/schema/context"
+	xmlns:aop="http://www.springframework.org/schema/aop"
+	xsi:schemaLocation="http://www.springframework.org/schema/mvc http://www.springframework.org/schema/mvc/spring-mvc.xsd
+		http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+		http://www.springframework.org/schema/aop 
+		http://www.springframework.org/schema/aop/spring-aop-3.2.xsd 
+		http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context.xsd">
+
+    
+    <mvc:default-servlet-handler/>
+    
+    <context:component-scan
+            base-package="cn.ljh.controller.controller"/>
+            
+	<!--拦截器 -->
+	<mvc:interceptors>
+		<!--多个拦截器,顺序执行 -->
+		<mvc:interceptor>
+			<mvc:mapping path="/**"/>
+			<!--<mvc:exclude-mapping path="/js/**"/>
+			<mvc:exclude-mapping path="/css/**"/>
+			<mvc:exclude-mapping path="/images/**"/> -->
+			<bean class="cn.ljh.controller.interceptor.LoginInterceptor"></bean>
+		</mvc:interceptor>
+	</mvc:interceptors>
+
+	<!-- 指定自己定义的validator -->
+    <mvc:annotation-driven conversion-service="conversionService" validator="validator">
+        <mvc:message-converters>
+            <bean class="org.springframework.http.converter.json.MappingJackson2HttpMessageConverter">
+                <property name="objectMapper">
+	                <bean class="com.fasterxml.jackson.databind.ObjectMapper">  
+	                        <property name="dateFormat">  
+	                            <bean class="java.text.SimpleDateFormat">  
+	                                <constructor-arg type="java.lang.String" value="yyyy-MM-dd HH:mm:ss" />  
+	                            </bean> 
+                            </property>  
+                    </bean>  
+                </property>
+            </bean>
+        </mvc:message-converters>
+    </mvc:annotation-driven>
+    
+    <bean id="conversionService"
+		class="org.springframework.format.support.FormattingConversionServiceFactoryBean">
+		<property name="converters">
+			<list>
+				<bean class="cn.ljh.controller.controller.converter.CustomDateConverter"/>
+			</list>
+		</property>
+	</bean>
+
+	<bean class="org.springframework.web.servlet.view.InternalResourceViewResolver">
+	        <!-- Example: a logical view name of 'showMessage' is mapped to '/WEB-INF/jsp/showMessage.jsp' -->
+	        <property name="viewClass" value="org.springframework.web.servlet.view.JstlView"/>
+	        <property name="prefix" value="/WEB-INF/view/"/>
+	        <property name="suffix" value=".jsp"/>
+	</bean>
+	
+	<!-- 配置LocaleChangeInterceptor 主要用于获取请求中的locale信息，将其转为Locale对像，获取LocaleResolver对象--> 
+    <mvc:interceptors>
+        <bean id="localeChangeInterceptor" class="org.springframework.web.servlet.i18n.LocaleChangeInterceptor">
+            <property name="paramName" value="lang"/>
+        </bean>
+    </mvc:interceptors>
+    
+	<bean id="localeResolver" class="org.springframework.web.servlet.i18n.SessionLocaleResolver">  
+   		 <property name="defaultLocale" value="zh_CN"/>   
+ 	</bean>  
+ 	
+ 	
+ 	<!-- 配置织入点 -->
+ 	<bean id="userLogPointcut" class="org.springframework.aop.support.annotation.AnnotationMatchingPointcut">
+        <constructor-arg index="0" value="org.springframework.stereotype.Controller"></constructor-arg>
+        <constructor-arg index="1" value="cn.ljh.controller.validation.constraints.WriteLog"></constructor-arg>
+   	</bean>
+ 
+    <!-- 配置如何处理织入点 -->
+    <bean id="userLogAdvice" class="cn.ljh.controller.aspect.WriteLogAdvice">
+    	<property name="userLogService" ref="userLogService"></property>
+    </bean>
+    
+    <!-- <aop:config>注释打开时，后面两个Bean不需要配置。 -->
+   	<aop:config>  
+		 <aop:advisor pointcut-ref="userLogPointcut" advice-ref="userLogAdvice" />
+	</aop:config>
+    
+    <!-- Spring接收Aop的bean是Advisor，所以还需要配置Advisor -->
+    <!--<bean id="userLogAdvisor" class="org.springframework.aop.support.DefaultPointcutAdvisor">
+        <property name="advice" ref="userLogAdvice" />
+        <property name="pointcut" ref="userLogPointcut" />
+   	</bean>-->
+   	
+	<!-- 基于类的代理 -->
+	<!--<bean
+		class="org.springframework.aop.framework.autoproxy.DefaultAdvisorAutoProxyCreator">
+		<property name="proxyTargetClass">
+			<value>true</value>
+		</property>
+	</bean>-->
+	
+	<!-- SpringMVC上传文件时，需要配置MultipartResolver处理器 -->
+    <bean id="multipartResolver"
+        class="org.springframework.web.multipart.commons.CommonsMultipartResolver">
+        <property name="defaultEncoding" value="UTF-8" />
+        <!-- 指定所上传文件的总大小,单位字节。注意maxUploadSize属性的限制不是针对单个文件，而是所有文件的容量之和 -->
+        <property name="maxUploadSize" value="10485760000" />
+    </bean>
+   	
+ 	
+</beans>
